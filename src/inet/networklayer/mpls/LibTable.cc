@@ -37,7 +37,10 @@ void LibTable::handleMessage(cMessage *)
 bool LibTable::resolveLabel(std::string inInterface, int inLabel,
         LabelOpVector& outLabel, std::string& outInterface, int& color)
 {
+    std::cerr << "In resolve label ... inInterface: " << inInterface << std::endl;
+
     bool any = (inInterface.length() == 0);
+    any = true; // TODO: fix
 
     for (auto& elem : lib) {
         if (!any && elem.inInterface != inInterface)
@@ -45,6 +48,12 @@ bool LibTable::resolveLabel(std::string inInterface, int inLabel,
 
         if (elem.inLabel != inLabel)
             continue;
+
+        std::cerr << "Resolving label from " << std::to_string(inLabel) << " to \n";
+        for(const auto& e : elem.outLabel){
+            std::cerr << "- " << std::to_string(e.optcode) << " "<< std::to_string(e.label) << "\n";
+        }
+        std::cerr << "out_if="<< elem.outInterface<< "\n";
 
         outLabel = elem.outLabel;
         outInterface = elem.outInterface;
