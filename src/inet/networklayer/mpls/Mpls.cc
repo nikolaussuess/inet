@@ -18,11 +18,25 @@
 #include "inet/networklayer/rsvpte/Utils.h"
 #include "inet/transportlayer/tcp_common/TcpHeader.h"
 
+#include "inet/debugging.h"
+
 namespace inet {
 
 #define ICMP_TRAFFIC    6
 
 Define_Module(Mpls);
+
+
+
+inline void print_packet_tags(Packet *msg){
+    auto tags = msg->getTags();
+    auto num_tags = tags.getNumTags();
+    for( int i = 0; i < num_tags; ++i){
+        DEBUG(tags.getTag(i))
+    }
+}
+
+
 
 void Mpls::initialize(int stage)
 {
@@ -61,6 +75,9 @@ void Mpls::processPacketFromL3(Packet *msg)
 {
     using namespace tcp;
 
+    DEBUG(ROUTER_STR(msg));
+    print_packet_tags(msg);
+
     const Protocol *protocol = msg->getTag<PacketProtocolTag>()->getProtocol();
     if (protocol != &Protocol::ipv4) {
         // only the Ipv4 protocol supported yet
@@ -96,11 +113,15 @@ bool Mpls::tryLabelAndForwardIpv4Datagram(Packet *packet)
     std::string outInterface; // FIXME set based on interfaceID
     int color;
 
+    DEBUG(ROUTER_STR(packet));
+
     if (!pct->lookupLabel(packet, outLabel, outInterface, color)) {
         EV_WARN << "no mapping exists for this packet" << endl;
+        DEBUG(ROUTER_STR(packet) << "in if. No mapping exists for this packet, return false.");
         return false;
     }
     int outInterfaceId = CHK(ift->findInterfaceByName(outInterface.c_str()))->getInterfaceId();
+    DEBUG(ROUTER_STR(packet) << "not in if.");
 
     ASSERT(outLabel.size() > 0);
 
@@ -113,6 +134,7 @@ bool Mpls::tryLabelAndForwardIpv4Datagram(Packet *packet)
     packet->trim();
     packet->removeTagIfPresent<DispatchProtocolReq>();
     packet->addTagIfAbsent<InterfaceReq>()->setInterfaceId(outInterfaceId);
+
     sendToL2(packet);
 
     return true;
@@ -120,8 +142,13 @@ bool Mpls::tryLabelAndForwardIpv4Datagram(Packet *packet)
 
 void Mpls::labelAndForwardIpv4Datagram(Packet *ipdatagram)
 {
+
+    DEBUG(ROUTER_STR(ipdatagram) << "before if");
+
     if (tryLabelAndForwardIpv4Datagram(ipdatagram))
         return;
+
+    DEBUG(ROUTER_STR(ipdatagram) << "after if");
 
     // handling our outgoing Ipv4 traffic that didn't match any FEC/LSP
     // do not use labelAndForwardIPv4Datagram for packets arriving to ingress!
@@ -190,6 +217,8 @@ void Mpls::doStackOps(Packet *packet, const LabelOpVector& outLabel)
 
 void Mpls::processPacketFromL2(Packet *packet)
 {
+    DEBUG(ROUTER_STR(packet));
+
     int protocolId = packet->getTag<PacketProtocolTag>()->getProtocol()->getId();
     if (protocolId == Protocol::mpls.getId()) {
         processMplsPacketFromL2(packet);
@@ -215,6 +244,8 @@ void Mpls::processMplsPacketFromL2(Packet *packet)
     NetworkInterface *ie = ift->getInterfaceById(incomingInterfaceId);
     std::string incomingInterfaceName = ie->getInterfaceName();
     const auto& mplsHeader = packet->peekAtFront<MplsHeader>();
+
+    DEBUG(ROUTER_STR(packet));
 
     EV_INFO << "Received " << packet << " from L2, label=" << mplsHeader->getLabel() << " inInterface=" << incomingInterfaceName << endl;
 
@@ -281,15 +312,37 @@ void Mpls::processMplsPacketFromL2(Packet *packet)
 
 void Mpls::sendToL2(Packet *msg)
 {
+    DEBUG(ROUTER_STR(msg));
     ASSERT(msg->findTag<InterfaceReq>());
     ASSERT(msg->findTag<PacketProtocolTag>());
+
+    print_packet_tags(msg);
+
     send(msg, "lowerLayerOut");
 }
 
 void Mpls::sendToL3(Packet *msg)
 {
+    DEBUG(ROUTER_STR(msg));
     ASSERT(msg->findTag<InterfaceInd>());
     ASSERT(msg->findTag<DispatchProtocolReq>());
+
+
+    if( msg->getTag<PacketProtocolTag>()->getProtocol()->getId() == Protocol::ipv4.getId()){
+        const auto& ipv4Header = msg->peekAtFront<Ipv4Header>();
+        DEBUG(ROUTER_STR(msg) << "Destination: " << *ipv4Header);
+
+        // TODO: Why does it work to set the InterfaceInd to any other interface that is NOT a loopback interface
+        // before sending it to the IP layer?
+        // FIXME: I do not like this solution ...
+        if( msg->findTag<InterfaceInd>()->getInterfaceId() == 101){
+            DEBUG(ROUTER_STR(msg) << "Replacing loopback 101 by 102. NOTE: BUGGY!");
+            msg->removeTagIfPresent<InterfaceInd>();
+            msg->addTagIfAbsent<InterfaceInd>()->setInterfaceId(102);
+        }
+    }
+
+
     send(msg, "upperLayerOut");
 }
 

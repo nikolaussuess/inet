@@ -14,6 +14,8 @@
 #include "inet/networklayer/mpls/LibTable.h"
 #include "inet/networklayer/rsvpte/RsvpTe.h"
 
+#include "inet/networklayer/mpls/MplsPacket_m.h"
+
 namespace inet {
 
 Define_Module(RsvpClassifier);
@@ -75,7 +77,24 @@ bool RsvpClassifier::lookupLabel(Packet *packet, LabelOpVector& outLabel, std::s
         if (elem.inLabel < 0)
             return false;
 
-        return lt->resolveLabel("", elem.inLabel, outLabel, outInterface, color);
+        bool ret = lt->resolveLabel("", elem.inLabel, outLabel, outInterface, color);
+        // TODO:
+        // Actually push the MPLS label. Thus, we do not require extra rules.
+        // NOTE: This might break other code ...
+        if (ret){
+
+            auto mplsHeader = makeShared<MplsHeader>();
+            mplsHeader->setLabel(elem.inLabel);
+
+            // Push header:
+            packet->trimFront();
+            mplsHeader->setS(packet->getTag<PacketProtocolTag>()->getProtocol()->getId() != Protocol::mpls.getId());
+            packet->insertAtFront(mplsHeader);
+            packet->addTagIfAbsent<PacketProtocolTag>()->setProtocol(&Protocol::mpls);
+
+        }
+        // End modification
+        return ret;
     }
 
     return false;
