@@ -30,6 +30,7 @@ class INET_API Ipv4NodeConfigurator : public cSimpleModule, public ILifecycle, p
     ModuleRefByPar<IInterfaceTable> interfaceTable;
     ModuleRefByPar<IIpv4RoutingTable> routingTable;
     ModuleRefByPar<Ipv4NetworkConfigurator> networkConfigurator;
+    int num_loopbacks_created {0};
 
   public:
     Ipv4NodeConfigurator();

@@ -11,6 +11,8 @@
 #include "inet/common/lifecycle/ModuleOperations.h"
 #include "inet/common/lifecycle/NodeStatus.h"
 
+#include "inet/debugging.h"
+
 namespace inet {
 
 Define_Module(Ipv4NodeConfigurator);
@@ -101,7 +103,11 @@ void Ipv4NodeConfigurator::prepareInterface(NetworkInterface *networkInterface)
     auto interfaceData = networkInterface->addProtocolData<Ipv4InterfaceData>();
     if (networkInterface->isLoopback()) {
         // we may reconfigure later it to be the routerId
-        interfaceData->setIPAddress(Ipv4Address::LOOPBACK_ADDRESS);
+        ++this->num_loopbacks_created;
+        std::string address = std::string("127.0.0.")+std::to_string(num_loopbacks_created);
+        DEBUG("Creating loopback interface with IP " << address);
+        interfaceData->setIPAddress(Ipv4Address{address.c_str()});
+        //interfaceData->setIPAddress(Ipv4Address::LOOPBACK_ADDRESS);
         interfaceData->setNetmask(Ipv4Address::LOOPBACK_NETMASK);
         interfaceData->setMetric(1);
     }
