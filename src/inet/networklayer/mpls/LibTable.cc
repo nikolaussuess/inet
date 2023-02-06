@@ -12,6 +12,10 @@
 
 #include "inet/common/XMLUtils.h"
 
+#include "inet/debugging.h"
+#include "inet/networklayer/common/InterfaceTable.h"
+#include "inet/networklayer/common/NetworkInterface.h"
+
 namespace inet {
 
 Define_Module(LibTable);
@@ -36,6 +40,27 @@ void LibTable::handleMessage(cMessage *)
 }
 
 /**
+ * Checks if the interface of the forwarding entry is up (TRUE) or down (FALSE).
+ */
+bool LibTable::isInterfaceUp(const std::string& ifname){
+    const cModule* router = this->getParentModule();
+    const InterfaceTable* ift = (InterfaceTable*)CHK(router->getModuleByPath(".interfaceTable"));
+    DEBUG("INTERFACE TABLE - # interfaces: " << ift->getNumInterfaces())
+    int nr_interfaces = ift->getNumInterfaces();
+    for( int i = 0; i < nr_interfaces; ++i ){
+        const NetworkInterface* interface = ift->getInterface(i);
+        std::cout << "Name: " << interface->getInterfaceName() << " ";
+        std::cout << interface->getInterfaceId() << " status = " << interface->isUp() << std::endl;
+        if( !strcmp(interface->getInterfaceName(), ifname.c_str() ) ){
+            return interface->isUp();
+        }
+    }
+
+    return false;
+
+}
+
+/**
  * Get entry from LIB table.
  * TODO: Modify to get it work with priority tag.
  */
@@ -46,6 +71,7 @@ bool LibTable::resolveLabel(std::string inInterface, int inLabel,
 
     bool any = (inInterface.length() == 0);
     any = true; // TODO: fix
+
 
     for (auto& elem : lib) {
         if (!any && elem.inInterface != inInterface)
@@ -63,10 +89,16 @@ bool LibTable::resolveLabel(std::string inInterface, int inLabel,
                 std::cerr << "   * " << std::to_string(e.optcode) << " "<< std::to_string(e.label) << "\n";
         }
 
+        // Filter interfaces to get only those that are up.
+        std::vector<ForwardingEntry> valid_entries;
+        std::copy_if(elem.entries.begin(), elem.entries.end(), std::back_inserter(valid_entries), [this](const auto&e){
+            return this->isInterfaceUp(e.outInterface);
+        });
+
         //outLabel = elem.outLabel;
         //outInterface = elem.outInterface;
         // Find entry with lowest priority
-        auto it = std::min_element(elem.entries.begin(), elem.entries.end(), [](const auto& e1, const auto& e2){
+        auto it = std::min_element(valid_entries.begin(), valid_entries.end(), [](const auto& e1, const auto& e2){
             return e1.priority < e2.priority;
         });
 
@@ -76,14 +108,14 @@ bool LibTable::resolveLabel(std::string inInterface, int inLabel,
         // Implementation of ECMP -- currently just a proof of concept.
         // NOTE: Very experimental code ...
         int min_priority = it->priority;
-        std::vector<ForwardingEntry> validEntries;
-        std::copy_if(elem.entries.begin(), elem.entries.end(), std::back_inserter(validEntries), [min_priority](const auto&e){
+        std::vector<ForwardingEntry> minimum_entries;
+        std::copy_if(elem.entries.begin(), elem.entries.end(), std::back_inserter(minimum_entries), [min_priority](const auto&e){
            return e.priority == min_priority;
         });
 
         // Note: Not the best way to do it, just proof of concept ...
-        it = validEntries.begin();
-        std::advance( it, std::rand() % validEntries.size() );
+        it = minimum_entries.begin();
+        std::advance( it, std::rand() % minimum_entries.size() );
         // END ECMP CODE
 
         outLabel = it->outLabel;

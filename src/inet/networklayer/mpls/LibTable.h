@@ -67,6 +67,7 @@ class INET_API LibTable : public cSimpleModule
 
     // static configuration
     virtual void readTableFromXML(const cXMLElement *libtable);
+    bool isInterfaceUp(const std::string& ifname);
 
   public:
     // label management
