@@ -73,9 +73,8 @@ bool LibTable::resolveLabel(std::string inInterface, int inLabel,
         if( it == elem.entries.end())
             return false;
 
-        // TODO: Deal with ECMP
+        // Implementation of ECMP -- currently just a proof of concept.
         // NOTE: Very experimental code ...
-        /*
         int min_priority = it->priority;
         std::vector<ForwardingEntry> validEntries;
         std::copy_if(elem.entries.begin(), elem.entries.end(), std::back_inserter(validEntries), [min_priority](const auto&e){
@@ -85,7 +84,6 @@ bool LibTable::resolveLabel(std::string inInterface, int inLabel,
         // Note: Not the best way to do it, just proof of concept ...
         it = validEntries.begin();
         std::advance( it, std::rand() % validEntries.size() );
-        */
         // END ECMP CODE
 
         outLabel = it->outLabel;
