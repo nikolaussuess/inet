@@ -8,6 +8,7 @@
 #include "inet/networklayer/mpls/LibTable.h"
 
 #include <iostream>
+#include <algorithm>
 
 #include "inet/common/XMLUtils.h"
 
@@ -34,6 +35,10 @@ void LibTable::handleMessage(cMessage *)
     ASSERT(false);
 }
 
+/**
+ * Get entry from LIB table.
+ * TODO: Modify to get it work with priority tag.
+ */
 bool LibTable::resolveLabel(std::string inInterface, int inLabel,
         LabelOpVector& outLabel, std::string& outInterface, int& color)
 {
@@ -50,13 +55,43 @@ bool LibTable::resolveLabel(std::string inInterface, int inLabel,
             continue;
 
         std::cerr << "Resolving label from " << std::to_string(inLabel) << " to \n";
-        for(const auto& e : elem.outLabel){
-            std::cerr << "- " << std::to_string(e.optcode) << " "<< std::to_string(e.label) << "\n";
+        for(const auto& fwe : elem.entries){
+            std::cerr << "- Entry with\n";
+            std::cerr << "  out_if:   " << fwe.outInterface << "\n";
+            std::cerr << "  priority: " << fwe.priority << "\n";
+            for( const auto& e : fwe.outLabel)
+                std::cerr << "   * " << std::to_string(e.optcode) << " "<< std::to_string(e.label) << "\n";
         }
-        std::cerr << "out_if="<< elem.outInterface<< "\n";
 
-        outLabel = elem.outLabel;
-        outInterface = elem.outInterface;
+        //outLabel = elem.outLabel;
+        //outInterface = elem.outInterface;
+        // Find entry with lowest priority
+        auto it = std::min_element(elem.entries.begin(), elem.entries.end(), [](const auto& e1, const auto& e2){
+            return e1.priority < e2.priority;
+        });
+
+        if( it == elem.entries.end())
+            return false;
+
+        // TODO: Deal with ECMP
+        // NOTE: Very experimental code ...
+        /*
+        int min_priority = it->priority;
+        std::vector<ForwardingEntry> validEntries;
+        std::copy_if(elem.entries.begin(), elem.entries.end(), std::back_inserter(validEntries), [min_priority](const auto&e){
+           return e.priority == min_priority;
+        });
+
+        // Note: Not the best way to do it, just proof of concept ...
+        it = validEntries.begin();
+        std::advance( it, std::rand() % validEntries.size() );
+        */
+        // END ECMP CODE
+
+        outLabel = it->outLabel;
+        outInterface = it->outInterface;
+        std::cerr << "Using ("<<outLabel <<","<<outInterface<<")"<<std::endl;
+
         color = elem.color;
 
         return true;
@@ -64,27 +99,34 @@ bool LibTable::resolveLabel(std::string inInterface, int inLabel,
     return false;
 }
 
+// NOTE: Modified.
+// Now, it does not overwrite an entry if it already exists but instead it adds an additional one.
 int LibTable::installLibEntry(int inLabel, std::string inInterface, const LabelOpVector& outLabel,
-        std::string outInterface, int color)
+        std::string outInterface, int color, int priority /* = 0 */)
 {
     if (inLabel == -1) {
         LibEntry newItem;
         newItem.inLabel = ++maxLabel;
         newItem.inInterface = inInterface;
-        newItem.outLabel = outLabel;
-        newItem.outInterface = outInterface;
+        //newItem.outLabel = outLabel;
+        //newItem.outInterface = outInterface;
+        ForwardingEntry fwe { outLabel, outInterface, priority };
+        newItem.entries.push_back(fwe);
         newItem.color = color;
         lib.push_back(newItem);
         return newItem.inLabel;
     }
     else {
         for (auto& elem : lib) {
-            if (elem.inLabel != inLabel)
+            //if (elem.inLabel != inLabel)
+            if (elem.inLabel != inLabel /* || elem.inInterface != inInterface ???*/)
                 continue;
 
-            elem.inInterface = inInterface;
-            elem.outLabel = outLabel;
-            elem.outInterface = outInterface;
+            //elem.inInterface = inInterface;
+            //elem.outLabel = outLabel;
+            //elem.outInterface = outInterface;
+            ForwardingEntry fwe { outLabel, outInterface, priority };
+            elem.entries.push_back(fwe);
             elem.color = color;
             return inLabel;
         }
@@ -116,13 +158,18 @@ void LibTable::readTableFromXML(const cXMLElement *libtable)
     for (auto& elem : list) {
         const cXMLElement& entry = *elem;
 
-        checkTags(&entry, "inLabel inInterface outLabel outInterface color");
+        checkTags(&entry, "inLabel inInterface outLabel outInterface color priority");
 
         LibEntry newItem;
         newItem.inLabel = getParameterIntValue(&entry, "inLabel");
         newItem.inInterface = getParameterStrValue(&entry, "inInterface");
-        newItem.outInterface = getParameterStrValue(&entry, "outInterface");
         newItem.color = getParameterIntValue(&entry, "color", 0);
+
+        ForwardingEntry fwe {
+            {}, // LabelOpVector outLabel
+            getParameterStrValue(&entry, "outInterface"),
+            getParameterIntValue(&entry, "priority", 0)
+        };
 
         cXMLElementList ops = getUniqueChild(&entry, "outLabel")->getChildrenByTagName("op");
         for (auto& ops_oit : ops) {
@@ -151,10 +198,22 @@ void LibTable::readTableFromXML(const cXMLElement *libtable)
             else
                 ASSERT(false);
 
-            newItem.outLabel.push_back(l);
+            fwe.outLabel.push_back(l);
         }
 
-        lib.push_back(newItem);
+        auto old_entry = std::find_if(lib.begin(), lib.end(), [&newItem](const LibEntry& entry){
+            return entry == newItem;
+        });
+
+        if( old_entry == lib.end() ){
+            // There is no entry, yet.
+            newItem.entries.push_back(fwe);
+            lib.push_back(newItem);
+        }
+        else {
+            // LIB entry already exists, we just add a new forwarding rule.
+            old_entry->entries.push_back(fwe);
+        }
 
         ASSERT(newItem.inLabel > 0);
 
@@ -193,6 +252,17 @@ LabelOpVector LibTable::popLabel()
     return vec;
 }
 
+/**
+ * Compare by inLabel and inInterface.
+ */
+bool operator==(const LibTable::LibEntry& lhs, const LibTable::LibEntry& rhs){
+    return lhs.inLabel == rhs.inLabel && lhs.inInterface == rhs.inInterface;
+}
+bool operator!=(const LibTable::LibEntry& lhs, const LibTable::LibEntry& rhs){
+    return !(lhs == rhs);
+}
+
+
 std::ostream& operator<<(std::ostream& os, const LabelOpVector& label)
 {
     os << "{";
@@ -227,9 +297,18 @@ std::ostream& operator<<(std::ostream& os, const LibTable::LibEntry& lib)
 {
     os << "inLabel:" << lib.inLabel;
     os << "    inInterface:" << lib.inInterface;
-    os << "    outLabel:" << lib.outLabel;
-    os << "    outInterface:" << lib.outInterface;
+    //os << "    outLabel:" << lib.outLabel;
+    //os << "    outInterface:" << lib.outInterface;
     os << "    color:" << lib.color;
+    os << "    entries: [";
+    for( const auto& e : lib.entries){
+        os << "[";
+        os << "    outLabel:" << e.outLabel;
+        os << "    outInterface:" << e.outInterface;
+        os << "    priority:" << e.priority;
+        os << "],";
+    }
+    os << "    ]";
     return os;
 }
 
