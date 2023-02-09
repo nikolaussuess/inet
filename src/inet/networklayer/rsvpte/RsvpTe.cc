@@ -21,6 +21,8 @@
 #include "inet/networklayer/rsvpte/Utils.h"
 #include "inet/networklayer/ted/Ted.h"
 
+#include "inet/debugging.h"
+
 namespace inet {
 
 #define PSB_REFRESH_INTERVAL       5.0
@@ -448,7 +450,6 @@ void RsvpTe::processHELLO_TIMER(HelloTimerMsg *msg)
 
     hMsg->setChunkLength(B(length));
     pk->insertAtBack(hMsg);
-
     sendToIP(pk, peer);
 
     h->ack = false;
@@ -1248,6 +1249,21 @@ void RsvpTe::handleMessageWhenUp(cMessage *msg)
     }
     else {
         Packet *pk = check_and_cast<Packet *>(msg);
+
+        /*
+         * When using the ScenarioManager to simulate link fails, the IP module sends ICMPv4 packets to this
+         * (local) RsvpTe module, when it has no remaining route to the destination. However, this class could not
+         * handle these packets, such that the simulations crashed.
+         * FIXME: This is a temporary fix.
+         * ICMPv4 packets are just ignored (so that simulations do not crash).
+         * A more advanced handling should, however, be considered in the future.
+         */
+        if( pk->getTag<PacketProtocolTag>()->getProtocol() == &Protocol::icmpv4){
+            EV_WARN << "RsvpTe got ICMP packet. Ignoring ..." << EV_ENDL;
+            DEBUG("Ignoring ICMPv4 packet.");
+            return;
+        }
+
         processRSVPMessage(pk);
         return;
     }
@@ -1286,6 +1302,7 @@ void RsvpTe::processRSVPMessage(Packet *pk)
 void RsvpTe::processHelloMsg(Packet *pk)
 {
     EV_INFO << "Received RSVP_HELLO" << endl;
+
 //    print(msg);
     const auto& msg = pk->peekAtFront<RsvpHelloMsg>();
     Ipv4Address sender = pk->getTag<L3AddressInd>()->getSrcAddress().toIpv4();
