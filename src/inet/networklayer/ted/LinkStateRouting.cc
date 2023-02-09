@@ -18,6 +18,7 @@
 #include "inet/networklayer/ipv4/IIpv4RoutingTable.h"
 #include "inet/networklayer/ipv4/Ipv4InterfaceData.h"
 #include "inet/networklayer/ted/Ted.h"
+#include "inet/debugging.h"
 
 namespace inet {
 
@@ -70,12 +71,29 @@ void LinkStateRouting::handleMessage(cMessage *msg)
         sendToPeers(tedmod->ted, true, Ipv4Address());
     }
     else if (!strcmp(msg->getArrivalGate()->getName(), "ipIn")) {
+
+        /*
+         * When using the ScenarioManager to simulate link fails, the IP module sends ICMPv4 packets to this
+         * (local) LinkStateRouting module, when it has no remaining route to the destination. However, this class
+         * could not handle these packets, such that the simulations crashed.
+         * FIXME: This is a temporary fix.
+         * ICMPv4 packets are just ignored (so that simulations do not crash).
+         * A more advanced handling should, however, be considered in the future.
+         */
+        Packet *pk = check_and_cast<Packet *>(msg);
+        if( pk->getTag<PacketProtocolTag>()->getProtocol() == &Protocol::icmpv4){
+            EV_WARN << "LinkStateRouting got ICMP packet. Ignoring ..." << EV_ENDL;
+            DEBUG("Ignoring ICMPv4 packet.");
+            return;
+        }
+
         EV_INFO << "Processing message from Ipv4: " << msg << endl;
         Ipv4Address sender = check_and_cast<Packet *>(msg)->getTag<L3AddressInd>()->getSrcAddress().toIpv4();
         processLINK_STATE_MESSAGE(check_and_cast<Packet *>(msg), sender);
     }
-    else
+    else {
         ASSERT(false);
+    }
 }
 
 void LinkStateRouting::receiveSignal(cComponent *source, simsignal_t signalID, cObject *obj, cObject *details)
