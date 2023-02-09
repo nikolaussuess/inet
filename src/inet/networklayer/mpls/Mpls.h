@@ -43,6 +43,8 @@ class INET_API Mpls : public cSimpleModule, public DefaultProtocolRegistrationLi
     virtual int numInitStages() const override { return NUM_INIT_STAGES; }
     virtual void handleMessage(cMessage *msg) override;
 
+    int getFirstUpNonloopbackInterface();
+
   protected:
     virtual void processPacketFromL3(Packet *msg);
     virtual void processPacketFromL2(Packet *msg);
