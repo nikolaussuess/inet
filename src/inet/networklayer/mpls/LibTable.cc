@@ -62,7 +62,7 @@ bool LibTable::isInterfaceUp(const std::string& ifname){
 
 /**
  * Get entry from LIB table.
- * TODO: Modify to get it work with priority tag.
+ * Modified.
  */
 bool LibTable::resolveLabel(std::string inInterface, int inLabel,
         LabelOpVector& outLabel, std::string& outInterface, int& color)
