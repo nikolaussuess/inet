@@ -1,6 +1,7 @@
 //
 // Copyright (C) 2005 Vojtech Janota
 // Copyright (C) 2003 Xuan Thang Nguyen
+// Modifications by Nikolaus Suess in 2022
 //
 // SPDX-License-Identifier: LGPL-3.0-or-later
 //
@@ -37,12 +38,19 @@ typedef std::vector<LabelOp> LabelOpVector;
 class INET_API LibTable : public cSimpleModule
 {
   public:
+
+    struct ForwardingEntry {
+        LabelOpVector outLabel;
+        std::string outInterface;
+
+        int priority = 0;
+    };
+
     struct LibEntry {
         int inLabel;
         std::string inInterface;
 
-        LabelOpVector outLabel;
-        std::string outInterface;
+        std::vector<ForwardingEntry> entries;
 
         // FIXME colors in nam, temporary solution
         int color;
@@ -59,6 +67,7 @@ class INET_API LibTable : public cSimpleModule
 
     // static configuration
     virtual void readTableFromXML(const cXMLElement *libtable);
+    bool isInterfaceUp(const std::string& ifname);
 
   public:
     // label management
@@ -66,7 +75,7 @@ class INET_API LibTable : public cSimpleModule
             LabelOpVector& outLabel, std::string& outInterface, int& color);
 
     virtual int installLibEntry(int inLabel, std::string inInterface, const LabelOpVector& outLabel,
-            std::string outInterface, int color);
+            std::string outInterface, int color, int priority = 0);
 
     virtual void removeLibEntry(int inLabel);
 
@@ -75,6 +84,9 @@ class INET_API LibTable : public cSimpleModule
     static LabelOpVector swapLabel(int label);
     static LabelOpVector popLabel();
 };
+
+bool operator==(const LibTable::LibEntry& lhs, const LibTable::LibEntry& rhs);
+bool operator!=(const LibTable::LibEntry& lhs, const LibTable::LibEntry& rhs);
 
 std::ostream& operator<<(std::ostream& os, const LibTable::LibEntry& lib);
 std::ostream& operator<<(std::ostream& os, const LabelOpVector& label);

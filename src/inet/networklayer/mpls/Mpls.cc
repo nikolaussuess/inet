@@ -27,17 +27,6 @@ namespace inet {
 Define_Module(Mpls);
 
 
-
-inline void print_packet_tags(Packet *msg){
-    auto tags = msg->getTags();
-    auto num_tags = tags.getNumTags();
-    for( int i = 0; i < num_tags; ++i){
-        DEBUG(tags.getTag(i))
-    }
-}
-
-
-
 void Mpls::initialize(int stage)
 {
     cSimpleModule::initialize(stage);
@@ -316,10 +305,29 @@ void Mpls::sendToL2(Packet *msg)
     ASSERT(msg->findTag<InterfaceReq>());
     ASSERT(msg->findTag<PacketProtocolTag>());
 
+    DEBUG(ROUTER_STR(msg) << msg);
     print_packet_tags(msg);
 
     send(msg, "lowerLayerOut");
 }
+
+
+int Mpls::getFirstUpNonloopbackInterface(){
+    DEBUG("INTERFACE TABLE - # interfaces: " << ift->getNumInterfaces())
+    int nr_interfaces = ift->getNumInterfaces();
+    for( int i = 0; i < nr_interfaces; ++i ){
+        const NetworkInterface* interface = ift->getInterface(i);
+        if( interface->isDown() || interface->isLoopback() )
+            continue;
+        std::cout << "Name: " << interface->getInterfaceName() << " ";
+        std::cout << interface->getInterfaceId() << " status = " << interface->isUp() << std::endl;
+        return interface->getInterfaceId();
+    }
+
+    throw cException("No non-loopback interface up any more.");
+
+}
+
 
 void Mpls::sendToL3(Packet *msg)
 {
@@ -336,9 +344,10 @@ void Mpls::sendToL3(Packet *msg)
         // before sending it to the IP layer?
         // FIXME: I do not like this solution ...
         if( msg->findTag<InterfaceInd>()->getInterfaceId() == 101){
-            DEBUG(ROUTER_STR(msg) << "Replacing loopback 101 by 102. NOTE: BUGGY!");
             msg->removeTagIfPresent<InterfaceInd>();
-            msg->addTagIfAbsent<InterfaceInd>()->setInterfaceId(102);
+            int interfaceId = getFirstUpNonloopbackInterface();
+            msg->addTagIfAbsent<InterfaceInd>()->setInterfaceId(interfaceId);
+            DEBUG(ROUTER_STR(msg) << "Replacing loopback 101 by " << interfaceId << ". NOTE: BUGGY!");
         }
     }
 
