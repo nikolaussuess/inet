@@ -68,10 +68,8 @@ bool LibTable::isInterfaceUp(const std::string& ifname){
 bool LibTable::resolveLabel(std::string inInterface, int inLabel,
         LabelOpVector& outLabel, std::string& outInterface, int& color)
 {
-    std::cerr << "In resolve label ... inInterface: " << inInterface << std::endl;
-
     bool any = (inInterface.length() == 0);
-    any = true; // TODO: fix
+    DEBUG("In resolve label ... inInterface: '" << inInterface << "', any=" << std::boolalpha << any);
 
 
     for (auto& elem : lib) {
@@ -81,13 +79,13 @@ bool LibTable::resolveLabel(std::string inInterface, int inLabel,
         if (elem.inLabel != inLabel)
             continue;
 
-        std::cerr << "Resolving label from " << std::to_string(inLabel) << " to \n";
+        DEBUG("Resolving label from " << std::to_string(inLabel) << " to");
         for(const auto& fwe : elem.entries){
-            std::cerr << "- Entry with\n";
-            std::cerr << "  out_if:   " << fwe.outInterface << "\n";
-            std::cerr << "  priority: " << fwe.priority << "\n";
-            for( const auto& e : fwe.outLabel)
-                std::cerr << "   * " << std::to_string(e.optcode) << " "<< std::to_string(e.label) << "\n";
+            DEBUG("- Entry with");
+            DEBUG("  out_if:   " << fwe.outInterface)
+            DEBUG("  priority: " << fwe.priority);
+            for( const auto& e : fwe.outLabel )
+                DEBUG("   * " << std::to_string(e.optcode) << " "<< std::to_string(e.label));
         }
 
         // Filter interfaces to get only those that are up.
@@ -121,7 +119,7 @@ bool LibTable::resolveLabel(std::string inInterface, int inLabel,
 
         outLabel = it->outLabel;
         outInterface = it->outInterface;
-        std::cerr << "Using ("<<outLabel <<","<<outInterface<<")"<<std::endl;
+        DEBUG("Using ("<<outLabel <<","<<outInterface<<")");
 
         color = elem.color;
 
