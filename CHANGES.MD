@@ -32,8 +32,6 @@ We currently added code to just ignore such `ICMPv4` packets. A more advanced ha
 * **`RsvpClassifier.cc` pushes the label**  
 The `RsvpClassifier` now actually pushes the label onto the stack. (Method: `RsvpClassifier::lookupLabel`)
 
-* Note: `LibTable::resolveLabel()` currently ignores the `inInterface` parameter. See commit `@9dd425af76030bc21a7d0d44a2fb3aa27cb4c644`. To be fixed.
-
 Additionally, some logging messages were added for debugging purposes.
 
 ## Usage
