@@ -1,7 +1,13 @@
 //
+// Original code taken from RsvpMplsRouter.ned, by:
 // Copyright (C) 2020 OpenSim Ltd.
 //
 // SPDX-License-Identifier: LGPL-3.0-or-later
+//
+// Modified (and turned into a new module called MplsRouter.ned) by:
+// Nikolaus Suess <nikolaus.suess@univie.ac.at>, 2023
+// Changes:
+// - added an additional loopback interface called mlo0, connected to the ml message dispatcher
 //
 
 package inet.node.mpls;
@@ -21,7 +27,7 @@ import inet.networklayer.ted.Ted;
 
 
 //
-// An RSVP-TE capable router.
+// An RSVP-TE capable router with an additional loopback interface called mlo0, connected to the ml message dispatcher.
 //
 // ~RsvpTe occupies the Transport layer; however, it is not a transport protocol
 // itself. ~RsvpTe uses transport protocols to route packets. ~Ted is used

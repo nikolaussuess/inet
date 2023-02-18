@@ -1,5 +1,6 @@
 //
 // Copyright (C) 2012 OpenSim Ltd.
+// Minor modifications in 2023 by Nikolaus Suess.
 //
 // SPDX-License-Identifier: LGPL-3.0-or-later
 //
@@ -30,7 +31,7 @@ class INET_API Ipv4NodeConfigurator : public cSimpleModule, public ILifecycle, p
     ModuleRefByPar<IInterfaceTable> interfaceTable;
     ModuleRefByPar<IIpv4RoutingTable> routingTable;
     ModuleRefByPar<Ipv4NetworkConfigurator> networkConfigurator;
-    int num_loopbacks_created {0};
+    int num_loopbacks_created {0}; // number of loopback interfaces
 
   public:
     Ipv4NodeConfigurator();

@@ -1,6 +1,7 @@
 //
 // Copyright (C) 2005 Vojtech Janota
 // Copyright (C) 2003 Xuan Thang Nguyen
+// Modifications by Nikolaus Suess in 2022-23.
 //
 // SPDX-License-Identifier: LGPL-3.0-or-later
 //
@@ -177,6 +178,7 @@ void LibTable::removeLibEntry(int inLabel)
     ASSERT(false);
 }
 
+// Modified: Allow priority tag
 void LibTable::readTableFromXML(const cXMLElement *libtable)
 {
     using namespace xmlutils;
