@@ -18,11 +18,13 @@ WORK CORRECTLY, AND YOU'RE GETTING VALID RESULTS.
 Contributions are highly welcome. You can make a difference!
 
 > **Note**<br>
-> This repository is a fork of the [INET repository](https://github.com/inet-framework/inet). We have adapted a few things, mainly with respect to MPLS. The goal is to provide an implementation that allows the simulation of MPLS traffic with a pre-existing data plane. To achieve this, we have modified a couple of classes and files.<br>
-> Features:<br>
-> - Priority stack for MPLS forwarding rules<br>
-> - ECMP<br>
-> - Some fixes ...<br>
+> This repository is a fork of the [INET repository](https://github.com/inet-framework/inet). We have adapted a few things, mainly with respect to MPLS. The goal is to provide an implementation that allows the simulation of MPLS traffic with a pre-existing data plane. To achieve this, we have modified a couple of classes and files.
+> 
+> Features:
+> - Priority stack for MPLS forwarding rules
+> - ECMP
+> - Some fixes ...
+> 
 > See file [CHANGES.MD](CHANGES.MD) for details.
 
 
