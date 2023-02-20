@@ -83,7 +83,6 @@ void LinkStateRouting::handleMessage(cMessage *msg)
         Packet *pk = check_and_cast<Packet *>(msg);
         if( pk->getTag<PacketProtocolTag>()->getProtocol() == &Protocol::icmpv4){
             EV_WARN << "LinkStateRouting got ICMP packet. Ignoring ..." << EV_ENDL;
-            DEBUG("Ignoring ICMPv4 packet.");
             return;
         }
 

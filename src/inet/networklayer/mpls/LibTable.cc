@@ -45,12 +45,11 @@ void LibTable::handleMessage(cMessage *)
 bool LibTable::isInterfaceUp(const std::string& ifname){
     const cModule* router = this->getParentModule();
     const InterfaceTable* ift = (InterfaceTable*)CHK(router->getModuleByPath(".interfaceTable"));
-    DEBUG("INTERFACE TABLE - # interfaces: " << ift->getNumInterfaces())
     int nr_interfaces = ift->getNumInterfaces();
     for( int i = 0; i < nr_interfaces; ++i ){
         const NetworkInterface* interface = ift->getInterface(i);
-        std::cout << "Name: " << interface->getInterfaceName() << " ";
-        std::cout << interface->getInterfaceId() << " status = " << interface->isUp() << std::endl;
+        //std::cout << "Name: " << interface->getInterfaceName() << " ";
+        //std::cout << interface->getInterfaceId() << " status = " << interface->isUp() << std::endl;
         if( !strcmp(interface->getInterfaceName(), ifname.c_str() ) ){
             return interface->isUp();
         }
@@ -68,8 +67,6 @@ bool LibTable::resolveLabel(std::string inInterface, int inLabel,
         LabelOpVector& outLabel, std::string& outInterface, int& color)
 {
     bool any = (inInterface.length() == 0);
-    DEBUG("In resolve label ... inInterface: '" << inInterface << "', any=" << std::boolalpha << any);
-
 
     for (auto& elem : lib) {
         if (!any && elem.inInterface != inInterface)
@@ -78,6 +75,7 @@ bool LibTable::resolveLabel(std::string inInterface, int inLabel,
         if (elem.inLabel != inLabel)
             continue;
 
+        /*
         DEBUG("Resolving label from " << std::to_string(inLabel) << " to");
         for(const auto& fwe : elem.entries){
             DEBUG("- Entry with");
@@ -85,7 +83,7 @@ bool LibTable::resolveLabel(std::string inInterface, int inLabel,
             DEBUG("  priority: " << fwe.priority);
             for( const auto& e : fwe.outLabel )
                 DEBUG("   * " << std::to_string(e.optcode) << " "<< std::to_string(e.label));
-        }
+        }*/
 
         // Filter interfaces to get only those that are up.
         std::vector<ForwardingEntry> valid_entries;
@@ -118,7 +116,7 @@ bool LibTable::resolveLabel(std::string inInterface, int inLabel,
 
         outLabel = it->outLabel;
         outInterface = it->outInterface;
-        DEBUG("Using ("<<outLabel <<","<<outInterface<<")");
+        EV_INFO << "Label resolved to ("<<outLabel <<","<<outInterface<<")" << endl;
 
         color = elem.color;
 

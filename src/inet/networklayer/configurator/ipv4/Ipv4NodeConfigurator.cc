@@ -105,7 +105,7 @@ void Ipv4NodeConfigurator::prepareInterface(NetworkInterface *networkInterface)
         // we may reconfigure later it to be the routerId
         ++this->num_loopbacks_created;
         std::string address = std::string("127.0.0.")+std::to_string(num_loopbacks_created);
-        DEBUG("Creating loopback interface with IP " << address);
+        EV_INFO << "Creating loopback interface with IP " << address << endl;
         interfaceData->setIPAddress(Ipv4Address{address.c_str()});
         //interfaceData->setIPAddress(Ipv4Address::LOOPBACK_ADDRESS);
         interfaceData->setNetmask(Ipv4Address::LOOPBACK_NETMASK);
