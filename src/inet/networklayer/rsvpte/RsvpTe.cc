@@ -1261,7 +1261,6 @@ void RsvpTe::handleMessageWhenUp(cMessage *msg)
          */
         if( pk->getTag<PacketProtocolTag>()->getProtocol() == &Protocol::icmpv4){
             EV_WARN << "RsvpTe got ICMP packet. Ignoring ..." << EV_ENDL;
-            DEBUG("Ignoring ICMPv4 packet.");
             return;
         }
 
