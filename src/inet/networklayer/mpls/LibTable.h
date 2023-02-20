@@ -44,6 +44,7 @@ class INET_API LibTable : public cSimpleModule
         std::string outInterface;
 
         int priority = 0;
+        int preference = 1;
     };
 
     struct LibEntry {
@@ -75,7 +76,7 @@ class INET_API LibTable : public cSimpleModule
             LabelOpVector& outLabel, std::string& outInterface, int& color);
 
     virtual int installLibEntry(int inLabel, std::string inInterface, const LabelOpVector& outLabel,
-            std::string outInterface, int color, int priority = 0);
+            std::string outInterface, int color, int priority = 0, int preference = 1);
 
     virtual void removeLibEntry(int inLabel);
 

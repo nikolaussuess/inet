@@ -16,6 +16,7 @@
 #include "inet/debugging.h"
 #include "inet/networklayer/common/InterfaceTable.h"
 #include "inet/networklayer/common/NetworkInterface.h"
+#include <random>
 
 namespace inet {
 
@@ -71,6 +72,9 @@ bool LibTable::resolveLabel(std::string inInterface, int inLabel,
     bool any = (inInterface.length() == 0);
     DEBUG("In resolve label ... inInterface: '" << inInterface << "', any=" << std::boolalpha << any);
 
+    // Random number generator
+    std::random_device rd;
+    std::mt19937 gen(rd());
 
     for (auto& elem : lib) {
         if (!any && elem.inInterface != inInterface)
@@ -94,8 +98,6 @@ bool LibTable::resolveLabel(std::string inInterface, int inLabel,
             return this->isInterfaceUp(e.outInterface);
         });
 
-        //outLabel = elem.outLabel;
-        //outInterface = elem.outInterface;
         // Find entry with lowest priority
         auto it = std::min_element(valid_entries.begin(), valid_entries.end(), [](const auto& e1, const auto& e2){
             return e1.priority < e2.priority;
@@ -104,17 +106,24 @@ bool LibTable::resolveLabel(std::string inInterface, int inLabel,
         if( it == valid_entries.end())
             return false;
 
-        // Implementation of ECMP -- currently just a proof of concept.
-        // NOTE: Very experimental code ...
+        // Implementation of ECMP
+        // We allow a weighted ECMP, i.e. the preference attribute can be used to load balance the
+        // traffic among entries with the same priority.
         int min_priority = it->priority;
         std::vector<ForwardingEntry> minimum_entries;
         std::copy_if(valid_entries.begin(), valid_entries.end(), std::back_inserter(minimum_entries), [min_priority](const auto&e){
            return e.priority == min_priority;
         });
 
-        // Note: Not the best way to do it, just proof of concept ...
+        std::vector<int> preferences (minimum_entries.size());
+        std::transform(minimum_entries.begin(), minimum_entries.end(), preferences.begin(), [](const auto&e){
+            return e.preference;
+         });
+
+        std::discrete_distribution<> d(preferences.begin(), preferences.end());
+
         it = minimum_entries.begin();
-        std::advance( it, std::rand() % minimum_entries.size() );
+        std::advance( it, d(gen) );
         // END ECMP CODE
 
         outLabel = it->outLabel;
@@ -131,14 +140,13 @@ bool LibTable::resolveLabel(std::string inInterface, int inLabel,
 // NOTE: Modified.
 // Now, it does not overwrite an entry if it already exists but instead it adds an additional one.
 int LibTable::installLibEntry(int inLabel, std::string inInterface, const LabelOpVector& outLabel,
-        std::string outInterface, int color, int priority /* = 0 */)
+        std::string outInterface, int color, int priority /* = 0 */, int preference /* = 1 */ )
 {
     if (inLabel == -1) {
         LibEntry newItem;
         newItem.inLabel = ++maxLabel;
         newItem.inInterface = inInterface;
-        //newItem.outLabel = outLabel;
-        //newItem.outInterface = outInterface;
+
         ForwardingEntry fwe { outLabel, outInterface, priority };
         newItem.entries.push_back(fwe);
         newItem.color = color;
@@ -151,10 +159,7 @@ int LibTable::installLibEntry(int inLabel, std::string inInterface, const LabelO
             if (elem.inLabel != inLabel /* || elem.inInterface != inInterface ???*/)
                 continue;
 
-            //elem.inInterface = inInterface;
-            //elem.outLabel = outLabel;
-            //elem.outInterface = outInterface;
-            ForwardingEntry fwe { outLabel, outInterface, priority };
+            ForwardingEntry fwe { outLabel, outInterface, priority, preference };
             elem.entries.push_back(fwe);
             elem.color = color;
             return inLabel;
@@ -188,7 +193,7 @@ void LibTable::readTableFromXML(const cXMLElement *libtable)
     for (auto& elem : list) {
         const cXMLElement& entry = *elem;
 
-        checkTags(&entry, "inLabel inInterface outLabel outInterface color priority");
+        checkTags(&entry, "inLabel inInterface outLabel outInterface color priority preference");
 
         LibEntry newItem;
         newItem.inLabel = getParameterIntValue(&entry, "inLabel");
@@ -198,7 +203,8 @@ void LibTable::readTableFromXML(const cXMLElement *libtable)
         ForwardingEntry fwe {
             {}, // LabelOpVector outLabel
             getParameterStrValue(&entry, "outInterface"),
-            getParameterIntValue(&entry, "priority", 0)
+            getParameterIntValue(&entry, "priority", 0),
+            getParameterIntValue(&entry, "preference", 1),
         };
 
         cXMLElementList ops = getUniqueChild(&entry, "outLabel")->getChildrenByTagName("op");
