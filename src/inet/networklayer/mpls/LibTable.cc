@@ -67,6 +67,7 @@ bool LibTable::resolveLabel(std::string inInterface, int inLabel,
         LabelOpVector& outLabel, std::string& outInterface, int& color)
 {
     bool any = (inInterface.length() == 0);
+    any = true; // TODO: fix
 
     for (auto& elem : lib) {
         if (!any && elem.inInterface != inInterface)
