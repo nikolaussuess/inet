@@ -1,5 +1,6 @@
 //
 // Copyright (C) 2005 Vojtech Janota
+// Modifications by Nikolaus Suess in 2023.
 //
 // SPDX-License-Identifier: LGPL-3.0-or-later
 //

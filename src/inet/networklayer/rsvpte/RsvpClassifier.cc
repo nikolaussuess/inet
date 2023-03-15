@@ -1,5 +1,6 @@
 //
 // Copyright (C) 2005 Vojtech Janota
+// Modifications by Nikolaus Suess in 2023.
 //
 // SPDX-License-Identifier: LGPL-3.0-or-later
 //
@@ -78,7 +79,6 @@ bool RsvpClassifier::lookupLabel(Packet *packet, LabelOpVector& outLabel, std::s
             return false;
 
         bool ret = lt->resolveLabel("", elem.inLabel, outLabel, outInterface, color);
-        // TODO:
         // Actually push the MPLS label. Thus, we do not require extra rules.
         // NOTE: This might break other code ...
         if (ret){

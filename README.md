@@ -1,4 +1,4 @@
-[![badge 1][badge-1]][1] [![badge 2][badge-2]][2]
+<!-- [![badge 1][badge-1]][1] [![badge 2][badge-2]][2] -->
 
 INET Framework for OMNEST/OMNeT++
 =================================
@@ -17,7 +17,16 @@ WORK CORRECTLY, AND YOU'RE GETTING VALID RESULTS.
 
 Contributions are highly welcome. You can make a difference!
 
-See the WHATSNEW file for recent changes.
+> **Note**<br>
+> This repository is a fork of the [INET repository](https://github.com/inet-framework/inet). We have adapted a few things, mainly with respect to MPLS. The goal is to provide an implementation that allows the simulation of MPLS traffic with a pre-existing data plane. To achieve this, we have modified a couple of classes and files.
+> 
+> Features:
+> - Priority stack for MPLS forwarding rules
+> - ECMP
+> - Some fixes ...
+> 
+> See file [CHANGES.MD](CHANGES.MD) for details.
+
 
 
 GETTING STARTED
@@ -51,9 +60,3 @@ If you want to use external interfaces in INET, enable the "Emulation" feature
 either in the IDE or using the inet_featuretool then regenerate the INET makefile
 using 'make makefiles'.
 
-
-[badge-1]: https://github.com/inet-framework/inet/workflows/Build%20and%20tests/badge.svg?branch=master
-[badge-2]: https://github.com/inet-framework/inet/workflows/Feature%20tests/badge.svg?branch=master
-
-[1]: https://github.com/inet-framework/inet/actions?query=workflow%3A%22Build+and+tests%22
-[2]: https://github.com/inet-framework/inet/actions?query=workflow%3A%22Feature+tests%22

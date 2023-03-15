@@ -1,5 +1,6 @@
 //
 // Copyright (C) 2012 OpenSim Ltd.
+// Modifications in 2023 by Nikolaus Suess.
 //
 // SPDX-License-Identifier: LGPL-3.0-or-later
 //
@@ -100,14 +101,18 @@ void Ipv4NodeConfigurator::prepareAllInterfaces()
 void Ipv4NodeConfigurator::prepareInterface(NetworkInterface *networkInterface)
 {
 //    ASSERT(!networkInterface->getProtocolData<Ipv4InterfaceData>());
+    // CHANGES: Allow multiple loopback interfaces that have unique IP addresses.
     auto interfaceData = networkInterface->addProtocolData<Ipv4InterfaceData>();
     if (networkInterface->isLoopback()) {
         // we may reconfigure later it to be the routerId
         ++this->num_loopbacks_created;
+
+        assert(num_loopbacks_created > 0);
+        assert(num_loopbacks_created < 255);
+
         std::string address = std::string("127.0.0.")+std::to_string(num_loopbacks_created);
         EV_INFO << "Creating loopback interface with IP " << address << endl;
         interfaceData->setIPAddress(Ipv4Address{address.c_str()});
-        //interfaceData->setIPAddress(Ipv4Address::LOOPBACK_ADDRESS);
         interfaceData->setNetmask(Ipv4Address::LOOPBACK_NETMASK);
         interfaceData->setMetric(1);
     }

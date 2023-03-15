@@ -1,7 +1,7 @@
 //
 // Copyright (C) 2005 Vojtech Janota
 // Copyright (C) 2003 Xuan Thang Nguyen
-// Modifications by Nikolaus Suess in 2022
+// Modifications by Nikolaus Suess in 2022-23
 //
 // SPDX-License-Identifier: LGPL-3.0-or-later
 //
@@ -15,6 +15,7 @@
 #include "inet/networklayer/contract/ipv4/Ipv4Address.h"
 #include "inet/networklayer/ipv4/Ipv4Header_m.h"
 #include "inet/networklayer/mpls/ConstType.h"
+#include "inet/common/scenario/IScriptable.h"
 
 namespace inet {
 
@@ -35,7 +36,7 @@ typedef std::vector<LabelOp> LabelOpVector;
 /**
  * Represents the Label Information Base (LIB) for MPLS.
  */
-class INET_API LibTable : public cSimpleModule
+class INET_API LibTable : public cSimpleModule, public IScriptable
 {
   public:
 
@@ -44,6 +45,7 @@ class INET_API LibTable : public cSimpleModule
         std::string outInterface;
 
         int priority = 0;
+        float preference = 1;
     };
 
     struct LibEntry {
@@ -56,6 +58,9 @@ class INET_API LibTable : public cSimpleModule
         int color;
     };
 
+    static constexpr int   DEFAULT_PRIORITY   = 0;
+    static constexpr float DEFAULT_PREFERENCE = 1.0f;
+
   protected:
     int maxLabel;
     std::vector<LibEntry> lib;
@@ -67,7 +72,13 @@ class INET_API LibTable : public cSimpleModule
 
     // static configuration
     virtual void readTableFromXML(const cXMLElement *libtable);
+    virtual void processNewXmlEntry(const cXMLElement &entry);
+    // Check if the interface called "ifname" is up (true) or down (false)
     bool isInterfaceUp(const std::string& ifname);
+    // Process the <update-entry /> tag from scenario.xml to update a LibTable entry.
+    virtual void processCommand_updateEntry(const cXMLElement& node);
+    // Process the <delete-entry /> tag from scenario.xml to delete an entry from the LibTable.
+    virtual void processCommand_deleteEntry(const cXMLElement& node);
 
   public:
     // label management
@@ -75,9 +86,12 @@ class INET_API LibTable : public cSimpleModule
             LabelOpVector& outLabel, std::string& outInterface, int& color);
 
     virtual int installLibEntry(int inLabel, std::string inInterface, const LabelOpVector& outLabel,
-            std::string outInterface, int color, int priority = 0);
+            std::string outInterface, int color, int priority = 0, float preference = 1.0f);
 
     virtual void removeLibEntry(int inLabel);
+
+    // process scenario.xml
+    virtual void processCommand(const cXMLElement& node) override;
 
     // utility
     static LabelOpVector pushLabel(int label);
