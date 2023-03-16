@@ -46,6 +46,10 @@ class INET_API LibTable : public cSimpleModule, public IScriptable
 
         int priority = 0;
         float preference = 1;
+
+        // Group entries with IDs
+        // This is used for the scenario manager, because (label,outInterface,priority,preference) does not uniquely identify an entry.
+        std::set<int> groups {};
     };
 
     struct LibEntry {

@@ -199,18 +199,30 @@ void LibTable::readTableFromXML(const cXMLElement *libtable)
 void LibTable::processNewXmlEntry(const cXMLElement &entry){
     using namespace xmlutils;
 
-    checkTags(&entry, "inLabel inInterface outLabel outInterface color priority preference");
+    checkTags(&entry, "inLabel inInterface outLabel outInterface color priority preference groups");
 
     LibEntry newItem;
     newItem.inLabel = getParameterIntValue(&entry, "inLabel");
     newItem.inInterface = getParameterStrValue(&entry, "inInterface");
     newItem.color = getParameterIntValue(&entry, "color", 0);
 
+    std::set<int> groups {};
+    if( auto child = getUniqueChildIfExists(&entry, "groups") ){
+        checkTags(child, "group");
+        cXMLElementList ids = child->getChildrenByTagName("group");
+        for( auto& id : ids ){
+            if(! id->getAttribute("id") )
+                continue;
+            groups.insert( atoi(id->getAttribute("id")) );
+        }
+    }
+
     ForwardingEntry fwe {
         {}, // LabelOpVector outLabel
         getParameterStrValue(&entry, "outInterface"),
         getParameterIntValue(&entry, "priority", DEFAULT_PRIORITY),
         (float)getParameterDoubleValue(&entry, "preference", DEFAULT_PREFERENCE),
+        groups,
     };
 
     cXMLElementList ops = getUniqueChild(&entry, "outLabel")->getChildrenByTagName("op");
@@ -379,26 +391,24 @@ void LibTable::processCommand(const cXMLElement& node)
 
 void LibTable::processCommand_updateEntry(const cXMLElement& node)
 {
-    // Mandatory
-    if( ! node.getAttribute("label") ){
+    // Either label or group attribute is mandatory
+    if( ! node.getAttribute("label") && ! node.getAttribute("group") ){
         EV_ERROR << "<update-entry> tag invalid." << endl;
         assert(false);
         return;
     }
-    int label = atoi(node.getAttribute("label"));
-    const char* out_interface = node.getAttribute("outInterface");
-
-    if( label == 0 || !out_interface || *out_interface == '\0' ){
-        EV_ERROR << "<update-entry> tag invalid." << endl;
-        assert(false);
-        return;
-    }
+    int label = 0;
+    if( node.getAttribute("label") )
+        label = atoi(node.getAttribute("label"));
 
     // optional attributes for matching ...
     const char* s_priority    = node.getAttribute("priority");
     const char* s_preference  = node.getAttribute("preference");
-    bool priority_ok = s_priority && *s_priority != '\0';
+    const char* s_group_id    = node.getAttribute("group");
+    const char* out_interface = node.getAttribute("outInterface");
+    bool priority_ok   = s_priority && *s_priority != '\0';
     bool preference_ok = s_preference && *s_preference != '\0';
+    bool group_ok      = s_group_id && *s_group_id != '\0';
 
     const cXMLElement *preference_tag = xmlutils::getUniqueChildIfExists(&node, "preference");
     // If it is not given, assume 0, which means "do not choose".
@@ -412,27 +422,29 @@ void LibTable::processCommand_updateEntry(const cXMLElement& node)
     if(priority_tag && priority_tag->getAttribute("value"))
         new_priority = atoi(priority_tag->getAttribute("value"));
 
-    const auto& it = std::find_if(this->lib.begin(), this->lib.end(), [label](const LibEntry& e){ return e.inLabel == label;});
-    if( it == this->lib.end()){
-        EV_ERROR << "No such tuple ("<< label<<","<<out_interface<<"). Cannot update."<<endl;
-        return;
-    }
-
-    for( auto& entry : it->entries ){
-        if( out_interface && strcmp(out_interface, entry.outInterface.c_str()) )
-            continue;
-        if( priority_ok && atoi(s_priority) != entry.priority)
-            continue;
-        if( preference_ok && fabs(atof(s_preference) - entry.preference) > 1E-8 )
+    for( auto& libentry : this->lib ){
+        // Skip entries where the label does not match the attribute iff it exists.
+        if( label != 0 && label != libentry.inLabel )
             continue;
 
-        if( preference_tag )
-            entry.preference = new_preference;
+        for( auto& entry : libentry.entries ){
+            if( out_interface && strcmp(out_interface, entry.outInterface.c_str()) )
+                continue;
+            if( priority_ok && atoi(s_priority) != entry.priority)
+                continue;
+            if( group_ok && entry.groups.count( atoi(s_group_id) ) == 0 )
+                continue;
+            if( preference_ok && fabs(atof(s_preference) - entry.preference) > 1E-8 )
+                continue;
 
-        if( priority_tag )
-            entry.priority = new_priority;
+            if( preference_tag )
+                entry.preference = new_preference;
 
-        EV_INFO << "Rule with inLabel " << it->inLabel << " updated." << endl;
+            if( priority_tag )
+                entry.priority = new_priority;
+
+            EV_INFO << "Rule with inLabel " << libentry.inLabel << " updated." << endl;
+        }
     }
 }
 
