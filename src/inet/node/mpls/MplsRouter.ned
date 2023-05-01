@@ -20,7 +20,7 @@ import inet.networklayer.common.InterfaceTable;
 import inet.networklayer.ipv4.Ipv4NetworkLayer;
 import inet.networklayer.mpls.IIngressClassifier;
 import inet.networklayer.mpls.LibTable;
-import inet.networklayer.mpls.Mpls;
+import inet.networklayer.mpls.MplsProgram;
 import inet.networklayer.rsvpte.RsvpTe;
 import inet.networklayer.ted.LinkStateRouting;
 import inet.networklayer.ted.Ted;
@@ -101,7 +101,7 @@ module MplsRouter
             parameters:
                 @display("p=529,554,row,150;q=l2queue");
         }
-        mpls: Mpls {
+        mpls: MplsProgram {
             parameters:
                 classifierModule = "^.classifier";
                 @display("p=450,400");

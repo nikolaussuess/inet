@@ -348,6 +348,17 @@ std::ostream& operator<<(std::ostream& os, const LabelOpVector& label)
     return os;
 }
 
+std::ostream& operator<<(std::ostream& os, const LibTable::ForwardingEntry& e)
+{
+    os << "[";
+    os << "    outLabel:" << e.outLabel;
+    os << "    outInterface:" << e.outInterface;
+    os << "    priority:" << e.priority;
+    os << "    preference:" << e.preference;
+    os << "],";
+    return os;
+}
+
 std::ostream& operator<<(std::ostream& os, const LibTable::LibEntry& lib)
 {
     os << "inLabel:" << lib.inLabel;
@@ -361,6 +372,7 @@ std::ostream& operator<<(std::ostream& os, const LibTable::LibEntry& lib)
         os << "    outLabel:" << e.outLabel;
         os << "    outInterface:" << e.outInterface;
         os << "    priority:" << e.priority;
+        os << "    preference:" << e.preference;
         os << "],";
     }
     os << "    ]";
@@ -397,7 +409,7 @@ void LibTable::processCommand_updateEntry(const cXMLElement& node)
         assert(false);
         return;
     }
-    int label = 0;
+    int label = INVALID_LABEL;
     if( node.getAttribute("label") )
         label = atoi(node.getAttribute("label"));
 
@@ -412,16 +424,17 @@ void LibTable::processCommand_updateEntry(const cXMLElement& node)
 
     const cXMLElement *preference_tag = xmlutils::getUniqueChildIfExists(&node, "preference");
     // If it is not given, assume 0, which means "do not choose".
-    float new_preference = 0.0f;
+    float new_preference = DEFAULT_PREFERENCE;
     if(preference_tag && preference_tag->getAttribute("value"))
         new_preference = atof(preference_tag->getAttribute("value"));
 
     const cXMLElement *priority_tag = xmlutils::getUniqueChildIfExists(&node, "priority");
     // If it is not given, assume 0
-    int new_priority = 0;
+    int new_priority = DEFAULT_PRIORITY;
     if(priority_tag && priority_tag->getAttribute("value"))
         new_priority = atoi(priority_tag->getAttribute("value"));
 
+    // TODO: Rewrite to call other processCommand_updateEntry() in order to avoid code duplication
     for( auto& libentry : this->lib ){
         // Skip entries where the label does not match the attribute iff it exists.
         if( label != 0 && label != libentry.inLabel )
@@ -434,7 +447,7 @@ void LibTable::processCommand_updateEntry(const cXMLElement& node)
                 continue;
             if( group_ok && entry.groups.count( atoi(s_group_id) ) == 0 )
                 continue;
-            if( preference_ok && fabs(atof(s_preference) - entry.preference) > 1E-8 )
+            if( preference_ok && fabs(atof(s_preference) - entry.preference) > FLOAT_EPS )
                 continue;
 
             if( preference_tag )
@@ -448,20 +461,50 @@ void LibTable::processCommand_updateEntry(const cXMLElement& node)
     }
 }
 
+// TODO: Replace INVALID_... by std::optional or similar
+void LibTable::processCommand_updateEntry(int label, const std::string& outInterface, int priority,
+        int group, float preference, float new_preference, int new_priority){
+    for( auto& libentry : this->lib ){
+        // Skip entries where the label does not match the attribute iff it exists.
+        if( label != 0 && label != libentry.inLabel )
+            continue;
+
+        for( auto& entry : libentry.entries ){
+            if( !outInterface.empty() && outInterface != entry.outInterface )
+                continue;
+            if( priority != INVALID_PRIORITY && priority != entry.priority)
+                continue;
+            if( group != INVALID_GROUP && entry.groups.count( group ) == 0 )
+                continue;
+            if( preference != INVALID_PREFERENCE && fabs(preference - entry.preference) > FLOAT_EPS )
+                continue;
+
+            if( new_preference != INVALID_PREFERENCE )
+                entry.preference = new_preference;
+
+            if( new_priority != INVALID_PRIORITY )
+                entry.priority = new_priority;
+
+            EV_INFO << "Rule with inLabel " << libentry.inLabel << " updated." << endl;
+            EV_INFO << entry << " -- " << new_preference << " ... " << INVALID_PREFERENCE << endl;
+        }
+    }
+}
+
 
 void LibTable::processCommand_deleteEntry(const cXMLElement& node)
 {
     // Mandatory:
     if( !node.getAttribute("label") ){
         EV_ERROR << "<delete-entry> tag invalid." << endl;
-        assert(false);
+        ASSERT(false);
         return;
     }
 
     int label = atoi(node.getAttribute("label"));
     if(label <= 0){
         EV_ERROR << "Invalid label in <delete-entry> tag." << endl;
-        assert(false);
+        ASSERT(false);
         return;
     }
 
@@ -476,13 +519,15 @@ void LibTable::processCommand_deleteEntry(const cXMLElement& node)
     const auto& it = std::find_if(this->lib.begin(), this->lib.end(), [label](const LibEntry& e){ return e.inLabel == label;});
     if( it == this->lib.end()){
         EV_ERROR << "Label not found ("<<label << ") in <delete-entry> tag." << endl;
-        assert(false);
+        ASSERT(false);
         return;
     }
 
     if( !out_if_ok && !priority_ok && !preference_ok ){
         // Delete full entry, because we only got the label ...
         this->lib.erase(it);
+        EV_INFO << "Deleted entry with label " << label << endl;
+        return;
     }
 
     LibEntry& entry = *it;

@@ -64,6 +64,11 @@ class INET_API LibTable : public cSimpleModule, public IScriptable
 
     static constexpr int   DEFAULT_PRIORITY   = 0;
     static constexpr float DEFAULT_PREFERENCE = 1.0f;
+    static constexpr int   INVALID_LABEL = 0;
+    static constexpr int   INVALID_GROUP = 0;
+    static constexpr int   INVALID_PRIORITY = -1;
+    static constexpr float INVALID_PREFERENCE = -1.0f;
+    static constexpr float FLOAT_EPS = 1E-6;
 
   protected:
     int maxLabel;
@@ -96,6 +101,8 @@ class INET_API LibTable : public cSimpleModule, public IScriptable
 
     // process scenario.xml
     virtual void processCommand(const cXMLElement& node) override;
+    virtual void processCommand_updateEntry(int label, const std::string& outInterface, int priority,
+            int group, float preference, float new_preference, int new_priority);
 
     // utility
     static LabelOpVector pushLabel(int label);
