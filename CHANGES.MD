@@ -203,7 +203,7 @@ In order to modify e.g. the preference (and set it to 0) after 1 second, one can
 ```
 <scenario>
     <at t="1">
-        <update-entry group="4" >
+        <update-entry group="4" module="R1.libTable">
             	<preference value="0" />
         </update-entry>
     </at>
