@@ -37,7 +37,9 @@ The `RsvpClassifier` now actually pushes the label onto the stack. (Method: `Rsv
 Additionally, some logging messages were added for debugging purposes.
 
 ## Usage
-1. Create an `omnetpp.ini` file:
+1. Create an `omnetpp.ini` file.  
+Most of the values here can be chosen as needed. It is, however, important to note, that in this example flows are represented by a `StandardHost` pair, where one host sends UDP packets using the `UdpBasicApp` module, and the target node receives these packets using `UdpSinkApp`. In fact, it is sufficient to have only a single target but separate source nodes, because the `(source,target)` tuple is used to classify packets and give them the appropriate labels.  
+Other configuration files, such as the lib table contents and the classification files are also loaded in the `omnetpp.ini` file for each router.
 ```
 [General]
 network = test_export
